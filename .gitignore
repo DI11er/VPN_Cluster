@@ -1,0 +1,8 @@
+docker/openvpn-as/config/*
+docker/wireguard/data/*
+docker/wireguard/startup.sh
+docker/pihole/etc-dnsmasq.d/*
+docker/pihole/etc-pihole/*
+docker/unbound/etc/*
+docker-compose.yaml
+.env

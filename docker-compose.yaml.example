@@ -1,0 +1,221 @@
+networks:
+  private_network:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.24.0.0/16
+
+
+services:
+  # Сервер основанный на socks5
+  server_shadowsocks_libev:
+    image: acrisliu/shadowsocks-libev
+    container_name: server_ss
+    restart: unless-stopped
+    ports:
+      - 8388:8388/tcp
+      - 8388:8388/udp
+    # volumes:
+      # - /root/.acme.sh:/root/.acme.sh:ro # Для выдачи сертификатов
+    depends_on:
+      - pihole
+      - unbound
+    env_file: .env
+    networks:
+      private_network:
+        ipv4_address: 172.24.0.6
+  
+  # Сервер VPN основанный на Wireguard с WebGUI-интерфейсом
+  server_wireguard:
+    container_name: server_wg
+    image: weejewel/wg-easy
+    restart: unless-stopped
+    ports:
+      - 51820:51820/udp
+      - 51821:51821/tcp
+    volumes:
+      - ./docker/wireguard/data:/etc/wireguard
+      - ./docker/wireguard/startup.sh:/usr/local/bin/startup.sh:ro
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+      - net.ipv4.ip_forward=1
+    depends_on:
+      - pihole
+      - unbound
+    env_file: .env
+    command: /bin/sh /usr/local/bin/startup.sh
+    networks:
+      private_network:
+        ipv4_address: 172.24.0.2
+  
+  # Сервер VPN основанный на OpenVPN с WebGUI-интерфейсом
+  server_openvpn-as:
+    image: lscr.io/linuxserver/openvpn-as
+    container_name: server_openvpn-as
+    restart: unless-stopped
+    ports:
+      - 943:943
+      - 9443:9443
+      - 1194:1194/udp
+      - 1194:1194/tcp
+    volumes:
+      - ./docker/openvpn-as/config:/config
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    depends_on:
+      - pihole
+      - unbound
+    env_file: .env
+    networks:
+      private_network:
+        ipv4_address: 172.24.0.5
+
+  # DNS кэшер
+  unbound:
+    image: mvance/unbound
+    container_name: unbound
+    restart: unless-stopped
+    hostname: unbound
+    volumes:
+      - ./docker/unbound:/opt/unbound/etc/unbound/
+    cap_add:
+      - NET_ADMIN
+    env_file: .env
+    networks:
+      private_network:
+        ipv4_address: 172.24.0.4
+  
+  # DNS фильтр
+  pihole:
+    image: pihole/pihole
+    container_name: pihole
+    restart: unless-stopped
+    volumes:
+       - ./docker/pihole/etc-pihole/:/etc/pihole/
+       - ./docker/pihole/etc-dnsmasq.d/:/etc/dnsmasq.d/
+    dns:
+      - 127.0.0.1
+      - ${PIHOLE_DNS}
+    cap_add:
+      - NET_ADMIN
+    depends_on:
+      - unbound
+    env_file: .env
+    networks:
+      private_network:
+        ipv4_address: 172.24.0.3
+
+networks:
+  private_network:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.24.0.0/16
+
+
+services:
+  # Сервер основанный на socks5
+  server_shadowsocks_libev:
+    image: acrisliu/shadowsocks-libev
+    container_name: server_ss
+    restart: unless-stopped
+    ports:
+      - 8388:8388/tcp
+      - 8388:8388/udp
+    depends_on:
+      - pihole
+      - unbound
+    env_file: .env
+    networks:
+      private_network:
+        ipv4_address: 172.24.0.6
+  
+  # Сервер VPN основанный на Wireguard с WebGUI-интерфейсом
+  server_wireguard:
+    container_name: server_wg
+    image: weejewel/wg-easy
+    restart: unless-stopped
+    ports:
+      - 51820:51820/udp
+      - 51821:51821/tcp
+    volumes:
+      - ./docker/wireguard/data:/etc/wireguard
+      - ./docker/wireguard/startup.sh:/usr/local/bin/startup.sh:ro
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+      - net.ipv4.ip_forward=1
+    depends_on:
+      - pihole
+      - unbound
+    env_file: .env
+    command: /bin/sh /usr/local/bin/startup.sh
+    networks:
+      private_network:
+        ipv4_address: 172.24.0.2
+  
+  # Сервер VPN основанный на OpenVPN с WebGUI-интерфейсом
+  server_openvpn-as:
+    image: lscr.io/linuxserver/openvpn-as
+    container_name: server_openvpn-as
+    restart: unless-stopped
+    ports:
+      - 943:943
+      - 9443:9443
+      - 1194:1194/udp
+      - 1194:1194/tcp
+    volumes:
+      - ./docker/openvpn-as/config:/config
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    depends_on:
+      - pihole
+      - unbound
+    env_file: .env
+    networks:
+      private_network:
+        ipv4_address: 172.24.0.5
+
+  # DNS кэшер
+  unbound:
+    image: mvance/unbound
+    container_name: unbound
+    restart: unless-stopped
+    hostname: unbound
+    volumes:
+      - ./docker/unbound/etc:/opt/unbound/etc/unbound/
+      - ./docker/unbound/unbound.conf:/opt/unbound/etc/unbound/unbound.conf:ro
+    cap_add:
+      - NET_ADMIN
+    env_file: .env
+    networks:
+      private_network:
+        ipv4_address: 172.24.0.4
+  
+  # DNS фильтр
+  pihole:
+    image: pihole/pihole
+    container_name: pihole
+    restart: unless-stopped
+    volumes:
+       - ./docker/pihole/etc-pihole/:/etc/pihole/
+       - ./docker/pihole/etc-dnsmasq.d/:/etc/dnsmasq.d/
+    dns:
+      - 127.0.0.1
+      - ${PIHOLE_DNS}
+    cap_add:
+      - NET_ADMIN
+    depends_on:
+      - unbound
+    env_file: .env
+    networks:
+      private_network:
+        ipv4_address: 172.24.0.3
+
