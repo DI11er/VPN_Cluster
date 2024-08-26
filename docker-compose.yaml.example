@@ -19,6 +19,8 @@ services:
       - pihole
       - unbound
     env_file: .env
+    environment:
+      - PASSWORD=${PASSWORD_SS}
     networks:
       private_network:
         ipv4_address: 172.24.0.6
@@ -44,6 +46,8 @@ services:
       - pihole
       - unbound
     env_file: .env
+    environment:
+      - PASSWORD=${PASSWORD_WG}
     command: /bin/sh /usr/local/bin/startup.sh
     networks:
       private_network:
